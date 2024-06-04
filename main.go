@@ -1,13 +1,102 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type apiConfig struct {
 	fileServerHits int
+}
+
+// type Chirp struct {
+// 	Id   int    `json:"id"`
+// 	Body string `json:"body"`
+// }
+
+// Structure for JSON error response
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+// Structure for JSON success response
+type SuccessResponse struct {
+	CleanedBody string `json:"cleaned_body"`
+	Body        string `json:"body"`
+	Id          int    `json:"id"`
+}
+
+func profanityFilter(text string) string {
+	profanities := []string{
+		"kerfuffle",
+		"sharbert",
+		"fornax",
+	}
+
+	var filtered []string
+
+	// loop through the wordsremove profanities
+	for _, word := range strings.Split(text, " ") {
+		skip := false
+		for _, profane := range profanities {
+			if strings.ToLower(word) == profane {
+				filtered = append(filtered, "****")
+				skip = true
+				break
+			}
+		}
+
+		if !skip {
+			filtered = append(filtered, word)
+		}
+	}
+
+	text = strings.Join(filtered, " ")
+	fmt.Println(text)
+	return text
+}
+
+func (apiconf *apiConfig) validate_chirp_Handler(rw http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var chirp Chirp
+	err := decoder.Decode(&chirp)
+	if err != nil {
+		// handle the error if the JSON is invalid
+		http.Error(rw, `{"error": "Something went wrong"}`, http.StatusBadRequest)
+		return
+	}
+
+	if len(chirp.Body) > 140 {
+		response := ErrorResponse{"chirp is too large"}
+		jsonResponse, _ := json.Marshal(response)
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write(jsonResponse)
+		return
+	}
+
+	// check for profanity
+	chirp.Body = profanityFilter(chirp.Body)
+	if chirp.ID == 0 {
+		chirp.ID = 1
+	} else {
+		chirp.ID++
+	}
+
+	fmt.Println(chirp.Body)
+	// successful response
+	response := SuccessResponse{
+		Body: chirp.Body,
+		Id:   chirp.ID,
+	}
+
+	jsonResponse, _ := json.Marshal(response)
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+	rw.Write(jsonResponse)
 }
 
 func (apiconf *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -87,6 +176,9 @@ func main() {
 
 	// Register the Adminmetrics handler
 	mux.HandleFunc("GET /admin/metrics", apiconf.adminMetricsHandler)
+
+	// Register check validate)chirp
+	mux.HandleFunc("POST /api/chirps", apiconf.validate_chirp_Handler)
 
 	// Start web server and log errors
 	fmt.Printf("Starting server on %s\n", server.Addr)
