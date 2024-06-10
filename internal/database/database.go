@@ -3,6 +3,8 @@ package database
 import (
 	"encoding/json"
 	"errors"
+	"github.com/calamityesp/chirpy/common"
+	"golang.org/x/crypto/bcrypt"
 	"os"
 	"sync"
 )
@@ -13,18 +15,8 @@ type DB struct {
 }
 
 type DBStructure struct {
-	Chirps map[int]Chirp `json:"chirps"`
-	Users  map[int]User  `json:"user"`
-}
-
-type Chirp struct {
-	ID   int    `json:"id"`
-	Body string `json:"body"`
-}
-
-type User struct {
-	Id    int    `json:"id"`
-	Email string `json:"email"`
+	Chirps map[int]common.Chirp `json:"chirps"`
+	Users  map[int]common.User  `json:"user"`
 }
 
 func NewDB(path string) (*DB, error) {
@@ -36,13 +28,13 @@ func NewDB(path string) (*DB, error) {
 	return db, err
 }
 
-func (db *DB) GetUsers() ([]User, error) {
+func (db *DB) GetUsers() ([]common.User, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
 		return nil, err
 	}
 
-	users := make([]User, 0, len(dbStructure.Users))
+	users := make([]common.User, 0, len(dbStructure.Users))
 	for _, user := range dbStructure.Users {
 		users = append(users, user)
 	}
@@ -50,35 +42,64 @@ func (db *DB) GetUsers() ([]User, error) {
 	return users, nil
 }
 
-func (db *DB) CreateUser(email string) (User, error) {
+func (db *DB) GetUserByEmail(email string) (common.User, error) {
+	var fUser common.User
+	var emptyUser common.User
+
 	dbStructure, err := db.loadDB()
 	if err != nil {
-		return User{}, err
+		return common.User{}, err
+	}
+
+	for _, user := range dbStructure.Users {
+		if user.Email == email {
+			fUser = user
+			break
+		}
+	}
+
+	if fUser != emptyUser {
+		return fUser, nil
+	}
+	return emptyUser, nil
+}
+
+func (db *DB) CreateUser(body common.User) (common.User, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return common.User{}, err
+	}
+
+	// has the password value from body
+	hashedPassword, err := db.convertPasswordToHash(body.Password)
+	if err != nil {
+		return common.User{}, err
 	}
 
 	id := len(dbStructure.Users) + 1
-	user := User{
-		Id:    id,
-		Email: email,
+	user := common.User{
+		Id:       id,
+		Email:    body.Email,
+		Password: hashedPassword,
 	}
 	dbStructure.Users[id] = user
 
 	err = db.writeDB(dbStructure)
 	if err != nil {
-		return User{}, err
+		return common.User{}, err
 	}
 
 	return user, nil
 }
 
-func (db *DB) CreateChirp(body string) (Chirp, error) {
+func (db *DB) CreateChirp(body string) (common.Chirp, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
-		return Chirp{}, err
+		return common.Chirp{}, err
 	}
 
 	id := len(dbStructure.Chirps) + 1
-	chirp := Chirp{
+	chirp := common.Chirp{
 		ID:   id,
 		Body: body,
 	}
@@ -86,19 +107,19 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 
 	err = db.writeDB(dbStructure)
 	if err != nil {
-		return Chirp{}, err
+		return common.Chirp{}, err
 	}
 
 	return chirp, nil
 }
 
-func (db *DB) GetChirps() ([]Chirp, error) {
+func (db *DB) GetChirps() ([]common.Chirp, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
 		return nil, err
 	}
 
-	chirps := make([]Chirp, 0, len(dbStructure.Chirps))
+	chirps := make([]common.Chirp, 0, len(dbStructure.Chirps))
 	for _, chirp := range dbStructure.Chirps {
 		chirps = append(chirps, chirp)
 	}
@@ -106,13 +127,13 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	return chirps, nil
 }
 
-func (db *DB) GetChirpById(id int) (Chirp, error) {
-	var fChirp Chirp
-	var emptyChirp Chirp
+func (db *DB) GetChirpById(id int) (common.Chirp, error) {
+	var fChirp common.Chirp
+	var emptyChirp common.Chirp
 
 	dbStructure, err := db.loadDB()
 	if err != nil {
-		return Chirp{}, err
+		return common.Chirp{}, err
 	}
 
 	for _, chirp := range dbStructure.Chirps {
@@ -130,8 +151,8 @@ func (db *DB) GetChirpById(id int) (Chirp, error) {
 
 func (db *DB) createDB() error {
 	dbStructure := DBStructure{
-		Chirps: map[int]Chirp{},
-		Users:  map[int]User{},
+		Chirps: map[int]common.Chirp{},
+		Users:  map[int]common.User{},
 	}
 	return db.writeDB(dbStructure)
 }
@@ -187,4 +208,14 @@ func (db *DB) deleteDatabase() error {
 	}
 
 	return nil
+}
+
+func (db *DB) convertPasswordToHash(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+
+	hashToString := string(hash)
+	return hashToString, nil
 }

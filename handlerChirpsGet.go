@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/calamityesp/chirpy/internal/database"
+	"github.com/calamityesp/chirpy/common"
 )
 
 func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
@@ -16,9 +16,9 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	chirps := []Chirp{}
+	chirps := []common.Chirp{}
 	for _, dbChirp := range dbChirps {
-		chirps = append(chirps, Chirp{
+		chirps = append(chirps, common.Chirp{
 			ID:   dbChirp.ID,
 			Body: dbChirp.Body,
 		})
@@ -32,7 +32,7 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 }
 
 func (cfg *apiConfig) handlerChirpRetrieveById(w http.ResponseWriter, r *http.Request) {
-	emptyChirp := database.Chirp{}
+	emptyChirp := common.Chirp{}
 	param := r.PathValue("chirpId")
 	fmt.Println(param)
 	chirpId, err := strconv.Atoi(param)

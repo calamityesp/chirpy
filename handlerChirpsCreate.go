@@ -3,14 +3,15 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"github.com/calamityesp/chirpy/common"
 	"net/http"
 	"strings"
 )
 
-type Chirp struct {
-	ID   int    `json:"id"`
-	Body string `json:"body"`
-}
+// type Chirp struct {
+// 	ID   int    `json:"id"`
+// 	Body string `json:"body"`
+// }
 
 func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
@@ -37,7 +38,7 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, Chirp{
+	respondWithJSON(w, http.StatusCreated, common.Chirp{
 		ID:   chirp.ID,
 		Body: chirp.Body,
 	})

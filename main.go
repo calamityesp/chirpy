@@ -2,23 +2,29 @@ package main
 
 import (
 	"flag"
-	"github.com/calamityesp/chirpy/internal/database"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/calamityesp/chirpy/internal/database"
+	"github.com/joho/godotenv"
 )
 
 type apiConfig struct {
 	fileserverhits int
 	DB             *database.DB
+	secret_Key     string
 }
 
 func main() {
+	// load env variables
+	godotenv.Load()
 	// local variables
 	const filepath = "./"
 	const port = "8080"
 	const databasePath = "database.json"
 
+	// check for debug flag
 	dbg := flag.Bool("debug", false, "Enable Debug Mode")
 	flag.Parse()
 
@@ -39,6 +45,7 @@ func main() {
 	apiCfg := apiConfig{
 		fileserverhits: 0,
 		DB:             db,
+		secret_Key:     os.Getenv("JWT_SECRET"),
 	}
 
 	// setup routing multiplexer
@@ -55,6 +62,7 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsRetrieve)
 	mux.HandleFunc("GET /api/chirps/{chirpId}", apiCfg.handlerChirpRetrieveById)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreate)
+	mux.HandleFunc("POST /api/login", apiCfg.handlerUsersLogin)
 
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 
