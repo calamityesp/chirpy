@@ -9,10 +9,7 @@ import (
 )
 
 func (cfg *apiConfig) handlerUsersLogin(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Body string `json:"body"`
-	}
-
+	// get decoder for request body
 	decoder := json.NewDecoder(r.Body)
 	params := common.User{}
 	err := decoder.Decode(&params)
@@ -35,6 +32,8 @@ func (cfg *apiConfig) handlerUsersLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, user)
+	// issue a jwt
+	cfg.GetNewJWT(&user)
 
+	respondWithJSON(w, http.StatusOK, user)
 }

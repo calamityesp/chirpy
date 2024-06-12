@@ -6,7 +6,9 @@ type Chirp struct {
 }
 
 type User struct {
-	Id       int    `json:"id"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Id                 int    `json:"id"`
+	Email              string `json:"email"`
+	Password           string `json:"password"`
+	Token              string `json:"jwtToken1"`
+	Expires_in_seconds int    `json:"expires_in_seconds"`
 }
