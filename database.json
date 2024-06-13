@@ -3,8 +3,8 @@
   "user": {
     "1": {
       "id": 1,
-      "email": "testing@email.com",
-      "password": "$2a$10$vK1y5U6BQ5chNgDhUsx59uDrnKDJz.KpxiuWTuWdbDpQ4GRyMEBdG",
+      "email": "k@email.com",
+      "password": "$2a$10$.Hm1O0nwwJYwvSVBq1OI9O1cKWUEE94nhFWq.CncO7RWe9GBOWemu",
       "jwtToken1": "",
       "expires_in_seconds": 0
     }
