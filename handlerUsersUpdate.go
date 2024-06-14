@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/calamityesp/chirpy/common"
@@ -19,14 +20,26 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	tokenString := r.Header.Get("Authorization")
-	if !strings.HasPrefix(tokenString, "Bearer") {
-		respondWithError(w, http.StatusInternalServerError, "Token given was not a Bearer token \n")
+	// tokenString := r.Header.Get("Authorization")
+	// if !strings.HasPrefix(tokenString, "Bearer") {
+	// 	respondWithError(w, http.StatusInternalServerError, "Token given was not a Bearer token \n")
+	// }
+
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		respondWithError(w, http.StatusUnauthorized, "no auth header included in request")
 	}
+
+	splitAuth := strings.Split(authHeader, " ")
+	if len(splitAuth) < 2 || splitAuth[0] != "Bearer" {
+		respondWithError(w, http.StatusUnauthorized, "malformed authorization header")
+	}
+	tokenString := splitAuth[1]
 
 	secret := cfg.secret_Key
 	claim := jwt.RegisteredClaims{}
-	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+	tokenString = strings.TrimPrefix(tokenString, "Bearer")
+	log.Printf("GivenToken:   %s", tokenString)
 	token, err := jwt.ParseWithClaims(tokenString, &claim, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
 	})
@@ -34,9 +47,28 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		log.Printf("You fucked up %s\n", err)
 	}
 
-	subject, _ := token.Claims.GetSubject()
+	// validate token
 
-	log.Printf("Something Something %s", subject)
+	subject, _ := token.Claims.GetSubject()
+	user.Id, err = strconv.Atoi(subject)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to convert id to integer")
+	}
+
+	issuer, err := token.Claims.GetIssuer()
+	if "chirpy" != issuer {
+		respondWithError(w, http.StatusUnauthorized, "Invalid Token.")
+	}
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error Validating Token")
+	}
+	update, err := cfg.DB.UpdateUser(user)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+	}
+	update.Token = tokenString
+	respondWithJSON(w, http.StatusOK, update)
+
 }
 
 // func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request) {

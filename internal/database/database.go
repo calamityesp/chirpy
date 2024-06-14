@@ -3,10 +3,12 @@ package database
 import (
 	"encoding/json"
 	"errors"
-	"github.com/calamityesp/chirpy/common"
-	"golang.org/x/crypto/bcrypt"
+	"log"
 	"os"
 	"sync"
+
+	"github.com/calamityesp/chirpy/common"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type DB struct {
@@ -64,6 +66,28 @@ func (db *DB) GetUserByEmail(email string) (common.User, error) {
 	return emptyUser, nil
 }
 
+func (db *DB) GetUserByID(id int) (common.User, error) {
+	var fUser common.User
+	var emptyUser common.User
+
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return common.User{}, err
+	}
+
+	for _, user := range dbStructure.Users {
+		if user.Id == id {
+			fUser = user
+			break
+		}
+	}
+
+	if fUser != emptyUser {
+		return fUser, nil
+	}
+	return emptyUser, nil
+}
+
 func (db *DB) CreateUser(body common.User) (common.User, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
@@ -90,6 +114,36 @@ func (db *DB) CreateUser(body common.User) (common.User, error) {
 	}
 
 	return user, nil
+}
+
+func (db *DB) UpdateUser(update common.User) (common.User, error) {
+	found := false
+
+	DBStructure, err := db.loadDB()
+	if err != nil {
+	}
+
+	for key, user := range DBStructure.Users {
+		if key == update.Id {
+			found = true
+			user.Id = update.Id
+			user.Email = update.Email
+			user.Password = update.Password
+			DBStructure.Users[key] = user
+			break
+		}
+	}
+
+	if found == false {
+		return update, errors.New("User not found")
+	}
+
+	// delete then rewqrite the database
+	db.deleteDatabase()
+	db.writeDB(DBStructure)
+
+	log.Printf("Updated User: id-%d, email-%s", update.Id, update.Email)
+	return update, nil
 }
 
 func (db *DB) CreateChirp(body string) (common.Chirp, error) {

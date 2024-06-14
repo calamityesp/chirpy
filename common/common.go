@@ -9,6 +9,6 @@ type User struct {
 	Id                 int    `json:"id"`
 	Email              string `json:"email"`
 	Password           string `json:"password"`
-	Token              string `json:"jwtToken1"`
+	Token              string `json:"token"`
 	Expires_in_seconds int    `json:"expires_in_seconds"`
 }
