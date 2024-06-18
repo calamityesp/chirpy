@@ -1,13 +1,1 @@
-{
-  "chirps": {},
-  "user": {
-    "1": {
-      "id": 1,
-      "email": "mike@bettercall.com",
-      "password": "654321",
-      "token": "",
-      "expires_in_seconds": 0
-    }
-  }
-}
-
+{"chirps":{},"user":{}}

@@ -18,6 +18,13 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		Body string `json:"body"`
 	}
 
+	authHeader := r.Header.Get("Authorization")
+	user, isValid := cfg.validateJwtToken(authHeader)
+	if !isValid {
+		respondWithError(w, http.StatusUnauthorized, "not authorized for that action")
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	err := decoder.Decode(&params)
@@ -32,15 +39,16 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	chirp, err := cfg.DB.CreateChirp(cleaned)
+	chirp, err := cfg.DB.CreateChirp(cleaned, user.Id)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp")
 		return
 	}
 
 	respondWithJSON(w, http.StatusCreated, common.Chirp{
-		ID:   chirp.ID,
-		Body: chirp.Body,
+		ID:        chirp.ID,
+		Body:      chirp.Body,
+		Author_Id: user.Id,
 	})
 }
 

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/calamityesp/chirpy/common"
 	"golang.org/x/crypto/bcrypt"
@@ -63,6 +64,30 @@ func (db *DB) GetUserByEmail(email string) (common.User, error) {
 	if fUser != emptyUser {
 		return fUser, nil
 	}
+	return emptyUser, errors.New("User Not Found")
+}
+
+func (db *DB) GetUserByRefreshToken(token string) (common.User, error) {
+	var fUser common.User
+	var emptyUser common.User
+
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return common.User{}, err
+	}
+
+	for _, user := range dbStructure.Users {
+		log.Printf("user token: %s  - compare: %s\n", user.RefreshToken, token)
+		if user.RefreshToken == token {
+			fUser = user
+			break
+		}
+	}
+
+	if fUser != emptyUser {
+		log.Println("User Found!!")
+		return fUser, nil
+	}
 	return emptyUser, nil
 }
 
@@ -86,6 +111,35 @@ func (db *DB) GetUserByID(id int) (common.User, error) {
 		return fUser, nil
 	}
 	return emptyUser, nil
+}
+
+func (db *DB) RevokeUserRefreshToken(refreshToken string) (bool, error) {
+	found := false
+
+	log.Printf("revokedToken %s \n", refreshToken)
+
+	DBStructure, err := db.loadDB()
+	if err != nil {
+	}
+
+	for _, user := range DBStructure.Users {
+		if user.RefreshToken == refreshToken {
+			found = true
+			user.RefreshToken = ""
+			user.Refresh_token_expire_time = time.Time{}
+			DBStructure.Users[user.Id] = user
+			break
+		}
+	}
+
+	if found == false {
+		return found, errors.New("User not found")
+	}
+
+	// delete then rewqrite the database
+	db.deleteDatabase()
+	db.writeDB(DBStructure)
+	return found, nil
 }
 
 func (db *DB) CreateUser(body common.User) (common.User, error) {
@@ -116,6 +170,33 @@ func (db *DB) CreateUser(body common.User) (common.User, error) {
 	return user, nil
 }
 
+func (db *DB) UpdateUserRefreshToken(update *common.User) (common.User, error) {
+	found := false
+
+	DBStructure, err := db.loadDB()
+	if err != nil {
+	}
+
+	for key, user := range DBStructure.Users {
+		if key == update.Id {
+			found = true
+			user.Refresh_token_expire_time = update.Refresh_token_expire_time
+			user.RefreshToken = update.RefreshToken
+			DBStructure.Users[key] = user
+			break
+		}
+	}
+
+	if found == false {
+		return common.User{}, errors.New("User not found")
+	}
+
+	// delete then rewqrite the database
+	db.deleteDatabase()
+	db.writeDB(DBStructure)
+	return *update, nil
+}
+
 func (db *DB) UpdateUser(update common.User) (common.User, error) {
 	found := false
 
@@ -128,7 +209,15 @@ func (db *DB) UpdateUser(update common.User) (common.User, error) {
 			found = true
 			user.Id = update.Id
 			user.Email = update.Email
-			user.Password = update.Password
+			user.Chirpy_Red = update.Chirpy_Red
+
+			if update.Password != "" {
+				hashedPassword, err := db.convertPasswordToHash(update.Password)
+				if err != nil {
+					return common.User{}, err
+				}
+				user.Password = hashedPassword
+			}
 			DBStructure.Users[key] = user
 			break
 		}
@@ -146,7 +235,7 @@ func (db *DB) UpdateUser(update common.User) (common.User, error) {
 	return update, nil
 }
 
-func (db *DB) CreateChirp(body string) (common.Chirp, error) {
+func (db *DB) CreateChirp(body string, userid int) (common.Chirp, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
 		return common.Chirp{}, err
@@ -154,8 +243,9 @@ func (db *DB) CreateChirp(body string) (common.Chirp, error) {
 
 	id := len(dbStructure.Chirps) + 1
 	chirp := common.Chirp{
-		ID:   id,
-		Body: body,
+		ID:        id,
+		Body:      body,
+		Author_Id: userid,
 	}
 	dbStructure.Chirps[id] = chirp
 
@@ -201,6 +291,31 @@ func (db *DB) GetChirpById(id int) (common.Chirp, error) {
 		return fChirp, nil
 	}
 	return emptyChirp, nil
+}
+
+func (db *DB) DeleteChirpById(id int) error {
+	newDbStructure := DBStructure{}
+
+	oldDbStructure, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+
+	//copy users to new database structure
+	newDbStructure.Users = oldDbStructure.Users
+
+	// loop through chirps and add all but the one being delete
+	for _, chirp := range oldDbStructure.Chirps {
+		if chirp.ID == id {
+			continue
+		}
+		newDbStructure.Chirps[chirp.ID] = chirp
+	}
+
+	// delete then rewqrite the database
+	db.deleteDatabase()
+	db.writeDB(newDbStructure)
+	return nil
 }
 
 func (db *DB) createDB() error {
@@ -272,4 +387,31 @@ func (db *DB) convertPasswordToHash(password string) (string, error) {
 
 	hashToString := string(hash)
 	return hashToString, nil
+}
+
+func (db *DB) UpgradeUserToChirpyRed(userId int) error {
+
+	user, err := db.GetUserByID(userId)
+	if err != nil {
+		return errors.New("Unable to find user. Possibly invalid id")
+	}
+
+	// update to chirpy red
+	user.Chirpy_Red = true
+	db.UpdateUser(user)
+	return nil
+
+}
+
+func (db *DB) DownGradeUserFromChirpyRed(userId int) error {
+
+	user, err := db.GetUserByID(userId)
+	if err != nil {
+		return errors.New("Unable to find user. Possibly invalid id")
+	}
+
+	// update to chirpy red
+	user.Chirpy_Red = false
+	db.UpdateUser(user)
+	return nil
 }
