@@ -389,6 +389,37 @@ func (db *DB) convertPasswordToHash(password string) (string, error) {
 	return hashToString, nil
 }
 
+func (db *DB) UpdateUserRed(update common.User) (common.User, error) {
+	found := false
+
+	DBStructure, err := db.loadDB()
+	if err != nil {
+	}
+
+	for key, user := range DBStructure.Users {
+		if key == update.Id {
+			found = true
+			user.Id = update.Id
+			user.Email = update.Email
+			user.Chirpy_Red = update.Chirpy_Red
+			user.Password = update.Password
+		}
+		DBStructure.Users[key] = user
+		break
+	}
+
+	if found == false {
+		return update, errors.New("User not found")
+	}
+
+	// delete then rewqrite the database
+	db.deleteDatabase()
+	db.writeDB(DBStructure)
+
+	log.Printf("Updated User: id-%d, email-%s", update.Id, update.Email)
+	return update, nil
+}
+
 func (db *DB) UpgradeUserToChirpyRed(userId int) error {
 
 	user, err := db.GetUserByID(userId)
@@ -398,7 +429,7 @@ func (db *DB) UpgradeUserToChirpyRed(userId int) error {
 
 	// update to chirpy red
 	user.Chirpy_Red = true
-	db.UpdateUser(user)
+	db.UpdateUserRed(user)
 	return nil
 
 }
@@ -412,6 +443,6 @@ func (db *DB) DownGradeUserFromChirpyRed(userId int) error {
 
 	// update to chirpy red
 	user.Chirpy_Red = false
-	db.UpdateUser(user)
+	db.UpdateUserRed(user)
 	return nil
 }

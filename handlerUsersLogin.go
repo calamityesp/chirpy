@@ -9,7 +9,6 @@ import (
 )
 
 func (cfg *apiConfig) handlerUsersLogin(w http.ResponseWriter, r *http.Request) {
-	var password string
 	// get decoder for request body
 	decoder := json.NewDecoder(r.Body)
 	params := common.User{}
@@ -26,22 +25,10 @@ func (cfg *apiConfig) handlerUsersLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	log.Printf("User password: %s ----  Request password: %s", user.Password, params.Password)
-	isHashed := cfg.isHashed(params.Password)
-	if !isHashed {
-		bytePassword, err := bcrypt.GenerateFromPassword([]byte(params.Password), 1)
-		if err != nil {
-			respondWithError(w, http.StatusUnauthorized, err.Error())
-			return
-		}
-		password = string(bytePassword)
-
-	} else {
-		password = params.Password
-	}
+	log.Printf("User password: %s ----  Request password: %s\n", user.Password, params.Password)
 
 	// validate password
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(params.Password))
 	if err != nil {
 		log.Printf("Comparing hash Error: %s", err.Error())
 		log.Printf("req password: %s ----  user.password: %s", params.Password, user.Password)

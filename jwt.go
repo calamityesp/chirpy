@@ -13,7 +13,7 @@ import (
 )
 
 func (cfg *apiConfig) GetNewJWT(user *common.User) {
-	defaultExpiration := 60 * 60 * 24
+	defaultExpiration := 60 * 60
 	if user.Expires_in_seconds == 0 || user.Expires_in_seconds > defaultExpiration {
 		log.Println("No expiration given, defauilting to 60 seconds")
 		user.Expires_in_seconds = defaultExpiration

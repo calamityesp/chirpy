@@ -1,1 +1,1 @@
-{"chirps":{},"user":{}}
+{"chirps":{},"user":{"1":{"id":1,"email":"walt@breakingbad.com","password":"$2a$10$2tsxrCTPOfuxYAF26KD.gev9qqvCP00iZ2Qjv.tpw1SAGXiwwzSyS","token":"","refresh_token":"d6e97837ed9459578f51cba4d71fa05e56139c3496e2f745bb3f974cdc34859c","expires_in_seconds":0,"Refresh_token_expire_time":"2024-08-17T00:15:08.939036159-06:00","is_chirpy_red":true}}}

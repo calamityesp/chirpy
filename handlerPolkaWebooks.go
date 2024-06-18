@@ -25,7 +25,7 @@ func (cfg *apiConfig) handlerPolkaUserWebhooks(w http.ResponseWriter, r *http.Re
 	}
 
 	switch params.Event {
-	case "user.upgrade":
+	case "user.upgraded":
 		err = cfg.DB.UpgradeUserToChirpyRed(params.Data.UserId)
 		if err != nil {
 			respondWithError(w, http.StatusUnauthorized, err.Error())
