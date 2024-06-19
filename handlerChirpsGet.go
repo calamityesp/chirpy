@@ -15,6 +15,12 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps")
 		return
 	}
+	// get the authorId
+	param := r.URL.Query().Get("author_id")
+	if param != "" {
+		cfg.handlerChirpsRetrieveById(w, r, param)
+		return
+	}
 
 	chirps := []common.Chirp{}
 	for _, dbChirp := range dbChirps {
@@ -22,6 +28,38 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 			ID:   dbChirp.ID,
 			Body: dbChirp.Body,
 		})
+	}
+
+	sort.Slice(chirps, func(i, j int) bool {
+		return chirps[i].ID < chirps[j].ID
+	})
+
+	respondWithJSON(w, http.StatusOK, chirps)
+}
+
+func (cfg *apiConfig) handlerChirpsRetrieveById(w http.ResponseWriter, r *http.Request, author_id string) {
+	dbChirps, err := cfg.DB.GetChirps()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps")
+		return
+	}
+
+	// get the authorId
+	authorId, err := strconv.Atoi(author_id)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+	}
+
+	chirps := []common.Chirp{}
+	for _, dbChirp := range dbChirps {
+		if dbChirp.Author_Id == authorId {
+			chirps = append(chirps, common.Chirp{
+				ID:        dbChirp.ID,
+				Body:      dbChirp.Body,
+				Author_Id: dbChirp.Author_Id,
+			})
+		}
+
 	}
 
 	sort.Slice(chirps, func(i, j int) bool {

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 func (cfg *apiConfig) handlerPolkaUserWebhooks(w http.ResponseWriter, r *http.Request) {
@@ -14,6 +15,25 @@ func (cfg *apiConfig) handlerPolkaUserWebhooks(w http.ResponseWriter, r *http.Re
 	type Hook struct {
 		Event string `json:"event"`
 		Data  Data
+	}
+
+	// check for api key, if not present reject
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		respondWithError(w, http.StatusUnauthorized, "no auth header included in request")
+		return
+	}
+
+	splitAuth := strings.Split(authHeader, " ")
+	if len(splitAuth) < 2 || splitAuth[0] != "ApiKey" {
+		respondWithError(w, http.StatusUnauthorized, "malformed authorization header")
+		return
+	}
+	tokenString := splitAuth[1]
+	isAuthorized := cfg.CheckApiKey(tokenString)
+	if !isAuthorized {
+		respondWithError(w, http.StatusUnauthorized, "unauthorized event access")
+		return
 	}
 
 	params := Hook{}
@@ -45,4 +65,11 @@ func (cfg *apiConfig) handlerPolkaUserWebhooks(w http.ResponseWriter, r *http.Re
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (cfg *apiConfig) CheckApiKey(token string) bool {
+	if token == cfg.API_KEY {
+		return true
+	}
+	return false
 }

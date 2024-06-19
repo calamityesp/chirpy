@@ -14,6 +14,7 @@ type apiConfig struct {
 	fileserverhits int
 	DB             *database.DB
 	secret_Key     string
+	API_KEY        string
 }
 
 func main() {
@@ -46,6 +47,7 @@ func main() {
 		fileserverhits: 0,
 		DB:             db,
 		secret_Key:     os.Getenv("JWT_SECRET"),
+		API_KEY:        os.Getenv("API_KEY"),
 	}
 
 	// setup routing multiplexer
