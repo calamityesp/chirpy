@@ -9,6 +9,11 @@ import (
 	"github.com/calamityesp/chirpy/common"
 )
 
+type GetStruct struct {
+	AuthorId string
+	Sort     string
+}
+
 func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
 	dbChirps, err := cfg.DB.GetChirps()
 	if err != nil {
@@ -16,9 +21,12 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// get the authorId
-	param := r.URL.Query().Get("author_id")
-	if param != "" {
-		cfg.handlerChirpsRetrieveById(w, r, param)
+	getChirps := GetStruct{
+		AuthorId: r.URL.Query().Get("author_id"),
+		Sort:     r.URL.Query().Get("sort"),
+	}
+	if getChirps.AuthorId != "" {
+		cfg.handlerChirpsRetrieveById(w, getChirps)
 		return
 	}
 
@@ -30,14 +38,20 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 		})
 	}
 
-	sort.Slice(chirps, func(i, j int) bool {
-		return chirps[i].ID < chirps[j].ID
-	})
+	if getChirps.Sort == "asc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].ID < chirps[j].ID
+		})
+	} else {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].ID > chirps[j].ID
+		})
+	}
 
 	respondWithJSON(w, http.StatusOK, chirps)
 }
 
-func (cfg *apiConfig) handlerChirpsRetrieveById(w http.ResponseWriter, r *http.Request, author_id string) {
+func (cfg *apiConfig) handlerChirpsRetrieveById(w http.ResponseWriter, cstruct GetStruct) {
 	dbChirps, err := cfg.DB.GetChirps()
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps")
@@ -45,7 +59,7 @@ func (cfg *apiConfig) handlerChirpsRetrieveById(w http.ResponseWriter, r *http.R
 	}
 
 	// get the authorId
-	authorId, err := strconv.Atoi(author_id)
+	authorId, err := strconv.Atoi(cstruct.AuthorId)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 	}
